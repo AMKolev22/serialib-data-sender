@@ -27,8 +27,8 @@ namespace Utils {
 
         ~Main() {
             if (this->dev != nullptr) {
-                dev->closeDevice();
-                delete dev;
+                this->dev->closeDevice();
+                delete this->dev;
             }
         }
         void setup(int bandw) {
