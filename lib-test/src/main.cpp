@@ -57,10 +57,10 @@ namespace Utils {
 
                 if constexpr (std::is_same_v<TYPE_OF_MESSAGE, std::string>) {
                     std::cout << arg << std::endl;
-                    dev->writeString(arg.c_str());
+                    this->dev->writeString(arg.c_str());
                 }
                 else
-                    throw std::invalid_argument("Only strings are supported");
+                    this->dev->writeString(std::to_string(arg).c_str());
                 }
             catch (const std::exception& err) {
                     std::cerr << "Error: " << err.what() << std::endl;
