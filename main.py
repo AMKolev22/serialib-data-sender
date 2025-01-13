@@ -1,28 +1,20 @@
-import websocket
-import _thread
-import time
-import rel
 
-def on_message(ws, message):
-    print(message)
+from detect import Detection
 
-def on_error(ws, error):
-    print(error)
+def main():
+    detection = Detection()
+    print("Starting the camera feed. Press 'q' to quit.")
 
-def on_close(ws, close_status_code, close_msg):
-    print("### closed ###")
-
-def on_open(ws):
-    ws.send("Hello, World")
+    # Main loop to continuously capture and display images
+    try:
+        while True:
+            if not detection.publish_image():
+                break  # Exit the loop if 'q' is pressed
+    except KeyboardInterrupt:
+        print("\nInterrupted by user.")
+    finally:
+        detection.shutdown()
+        print("Application terminated.")
 
 if __name__ == "__main__":
-    websocket.enableTrace(True)
-    ws = websocket.WebSocketApp("ws://localhost:8000",
-                              on_open=on_open,
-                              on_message=on_message,
-                              on_error=on_error,
-                              on_close=on_close)
-
-    ws.run_forever(dispatcher=rel, reconnect=5)
-    rel.signal(2, rel.abort) 
-    rel.dispatch()
+    main()
