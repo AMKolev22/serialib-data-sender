@@ -1,6 +1,11 @@
 #ifndef SERIALIB_H
 #define SERIALIB_H
 
+#define ASIO_STANDALONE
+#define _WEBSOCKETPP_CPP11_TYPE_TRAITS_
+#define _WEBSOCKETPP_CPP11_CHRONO_
+#define _WEBSOCKETPP_NOEXCEPT_
+
 #if defined(__CYGWIN__)
     // This is Cygwin special case
     #include <sys/time.h>

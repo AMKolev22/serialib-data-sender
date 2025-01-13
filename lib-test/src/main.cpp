@@ -1,13 +1,23 @@
+#define ASIO_STANDALONE
+#define _WEBSOCKETPP_CPP11_TYPE_TRAITS_
+#define _WEBSOCKETPP_CPP11_CHRONO_
+#define _WEBSOCKETPP_NOEXCEPT_
+
+#include <websocketpp/config/asio_no_tls.hpp>
+#include <websocketpp/server.hpp>   
+#include "server.h"
 #include "../lib/seriallib.h"
+
+
 #include <iostream>
 #include <string>
-#include <cstring>
-#include <type_traits>
+#include <chrono>
+#include <memory>
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #define ROBOT_SLEEP(milliseconds) Sleep(milliseconds)
-#define ROBOT_PORT "\\\\.\\COM4"
+#define ROBOT_PORT "\\\\.\\COM5"
 #endif
 
 #if defined(__linux__) || defined(__APPLE__)
@@ -16,8 +26,10 @@
 #define ROBOT_PORT "/dev/ttyACM0"
 #endif
 
-namespace Utils {
+//websocketpp::connection_hdl hdlReference;
+//websocketpp::server<websocketpp::config::asio> server;
 
+namespace Utils {
 
     template <typename SerialType>
     class Main {
@@ -99,14 +111,59 @@ namespace Utils {
     }
 }
 
-int main() {
-    auto* dev = new Utils::Main<serialib>();
-    dev->setup(115200);
-    while (true) {
+auto dev = std::make_shared<Utils::Main<serialib>>();
+
+void on_message(websocketpp::server<websocketpp::config::asio>* s,
+    websocketpp::connection_hdl hdl,
+    websocketpp::server<websocketpp::config::asio>::message_ptr msg) {
+    std::string payload = msg->get_payload();
+
+    std::cout << "Received message: " << payload << std::endl;
+
+    if (payload == "Detected human") {
+        Utils::modifyMovement(false, dev.get());
+
         dev->sendMessage();
         dev->readMessage();
-        Utils::modifyMovement(!dev->shouldMove, dev);
-        ROBOT_SLEEP(100);
+
+        try {
+            s->send(hdl, "Detected human!", websocketpp::frame::opcode::text);
+        }
+        catch (const websocketpp::exception& e) {
+            std::cout << "Error sending message: " << e.what() << std::endl;
+        }
     }
-    delete dev;
+}
+
+int main() {
+    dev->setup(115200);
+    try {
+        websocketpp::server<websocketpp::config::asio> server;
+        std::cout << "Opnening 1" << std::endl;
+
+        server.set_access_channels(websocketpp::log::alevel::all ^ websocketpp::log::alevel::frame_header);
+
+        std::cout << "Opnening 2" << std::endl;
+        server.clear_access_channels(websocketpp::log::alevel::frame_header);
+        std::cout << "Opnening 3" << std::endl;
+        server.init_asio();
+        std::cout << "Opnening 4" << std::endl;
+        server.set_message_handler(bind(&on_message, &server, ::_1, ::_2));
+        std::cout << "Opnening 5" << std::endl;
+
+        server.listen(SERVER_PORT);
+        std::cout << "Opnening 6" << std::endl;
+        server.start_accept();
+        std::cout << "Opnening 7" << std::endl;
+        server.run();
+        std::cout << "Server listening on port " << SERVER_PORT;
+    }
+    catch (websocketpp::exception const& e) {
+        std::cout << e.what() << std::endl;
+    }
+    catch (...) {
+        std::cout << "other exception" << std::endl;
+    }
+
+
 }
