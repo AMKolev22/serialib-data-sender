@@ -127,7 +127,7 @@ void on_message(websocketpp::server<websocketpp::config::asio>* s,
     websocketpp::connection_hdl hdl,
     websocketpp::server<websocketpp::config::asio>::message_ptr msg) {
     std::string payload = msg->get_payload();
-
+    std::cout << payload << std::endl;
     if (payload == "Detected human") {
         Utils::modifyMovement(false, dev.get());
         dev->sendMessage<std::string>("stop\n");
