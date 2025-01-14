@@ -98,9 +98,14 @@ namespace Utils {
         }
 
         void readMessage() {
-            char buffer[10] = {};
-            this->dev->readString(buffer, '\n', sizeof(buffer) - 1, 2000);
-            std::cout << buffer;
+            char buffer[128] = {};
+            try {
+                this->dev->readString(buffer, '\n', sizeof(buffer) - 1, 2000);
+                std::cout << buffer << std::endl;
+            }
+            catch (const std::exception& err) {
+                std::cerr << "Error: " << err.what() << std::endl;
+            }
         }
 
     private:
@@ -125,18 +130,24 @@ void on_message(websocketpp::server<websocketpp::config::asio>* s,
 
     if (payload == "Detected human") {
         Utils::modifyMovement(false, dev.get());
+        dev->sendMessage<std::string>("stop\n");
 
-        dev->sendMessage<std::string>("stop");
+        ROBOT_SLEEP(100);
         dev->readMessage();
-
-        try {
-            s->send(hdl, "Detected human!", websocketpp::frame::opcode::text);
-        }
-        catch (const websocketpp::exception& e) {
-            std::cout << "Error sending message: " << e.what() << std::endl;
-        }
+        ROBOT_SLEEP(30);
     }
+    else if (payload == "Road clear") {
+        Utils::modifyMovement(true, dev.get());
+        dev->sendMessage<std::string>("move\n");
+
+        ROBOT_SLEEP(100);
+        dev->readMessage();
+        ROBOT_SLEEP(30);
+    }
+
 }
+
+
 int main() {
     dev->setup(115200);
     try {
