@@ -80,22 +80,48 @@ namespace Utils {
             }
         }
 
-        void sendMessage() {
-            try {
-                if (!this->ready)
-                    throw std::logic_error("Device is not ready");
+        //void sendMessage() {
+        //    try {
+        //        if (!this->ready)
+        //            throw std::logic_error("Device is not ready");
 
-                if (this->shouldMove)
-                    this->dev->writeString("move");
+        //        if (this->shouldMove)
+        //            this->dev->writeString("move");
 
-                else
-                    this->dev->writeString("stop");
+        //        else
+        //            this->dev->writeString("stop");
 
-            }
-            catch (const std::exception& err) {
-                std::cerr << "Error: " << err.what() << std::endl;
-            }
-        }
+        //    }
+        //    catch (const std::exception& err) {
+        //        std::cerr << "Error: " << err.what() << std::endl;
+        //    }
+        //}
+        //void sendMessage() {
+        //    try {
+        //        if (!this->ready)
+        //            throw std::logic_error("Device is not ready");
+
+        //        if (this->shouldMove) {
+        //            std::string receivedData = this->dev->readMessage();
+        //            if (!receivedData.empty()) {
+        //                if (std::regex_match(receivedData, std::regex("^\\d+,\\d+$"))) {
+        //                    //this->dev->writeString(receivedData + "\n");
+        //                    std::cout << "Forwarded coordinates: " << receivedData << std::endl;
+        //                }
+        //                else {
+        //                    std::cerr << "Invalid coordinate data: " << receivedData << std::endl;
+        //                }
+        //            }
+        //        }
+        //        else {
+        //            this->dev->writeString("stop\n");
+        //        }
+        //    }
+        //    catch (const std::exception& err) {
+        //        std::cerr << "Error: " << err.what() << std::endl;
+        //    }
+        //}
+
 
         void readMessage() {
             char buffer[128] = {};
@@ -138,7 +164,7 @@ void on_message(websocketpp::server<websocketpp::config::asio>* s,
     }
     else if (payload == "Road clear") {
         Utils::modifyMovement(true, dev.get());
-        dev->sendMessage<std::string>("move\n");
+        dev->sendMessage<std::string>(payload);
 
         ROBOT_SLEEP(100);
         dev->readMessage();
