@@ -91,7 +91,7 @@ class Detection:
         return lookahead_point
 
     def send_lookahead_point(self, point):
-        if point:
+        if point and not self.human_present:
             lookahead_str = f"{point[0]},{point[1]}"
             self.client.ws.send(lookahead_str)
     def smooth_lookahead_point(self, point):
@@ -145,6 +145,11 @@ class Detection:
             self.client.ws.send("Road clear")
             self.human_present = False
 
+        # Skip further processing if a human is detected
+        if self.human_present:
+            time.sleep(self.frame_delay)  # Maintain frame rate while pausing
+            return True
+
         leftmost_line, rightmost_line, _, _ = self.detect_lanes(frame)
 
         lookahead_point = self.compute_lookahead_point(leftmost_line, rightmost_line)
@@ -173,7 +178,6 @@ class Detection:
             self.shutdown()
             return False
         return True
-
 
     def shutdown(self):
         self.cap.release()

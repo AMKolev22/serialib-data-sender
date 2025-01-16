@@ -17,7 +17,7 @@
 #if defined(_WIN32) || defined(_WIN64)
     #include <windows.h>
     #define ROBOT_SLEEP(milliseconds) Sleep(milliseconds)
-    #define ROBOT_PORT "\\\\.\\COM5"
+    #define ROBOT_PORT "\\\\.\\COM3"
 #endif
 
 #if defined(__linux__) || defined(__APPLE__)

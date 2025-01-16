@@ -1,108 +1,105 @@
-#include "Servo.h"
+#include <Servo.h>
+
 const int motor1Pin1 = 3;
 const int motor1Pin2 = 4;
 const int motor2Pin1 = 5;
 const int motor2Pin2 = 6;
 const int enaPin = 10;
 const int enbPin = 11;
-
-// Servo pin
 const int servoPin = 9;
 
-// Servo and movement variables
 Servo myservo;
-bool shouldMove = false;
-unsigned long lastReadTime = 0;
-const unsigned long timeout = 50;
-unsigned long lastServoMoveTime = 0;
-unsigned long servoMoveInterval = 1000;
-int currentServoAngle = 90;
+int targetSpeed = 0;
+int currentSpeed = 0;
+const int speedStep = 10;
+const int minSpeed = 100;
+const int stopThreshold = 50;
 
-// Function to control motor direction and speed
+unsigned long lastUpdateTime = 0;
+const unsigned long updateInterval = 20;
+
 void controlMotor(int pin1, int pin2, int enablePin, bool forward, int speed) {
-    digitalWrite(pin1, forward ? HIGH : LOW);  // Control motor direction
-    digitalWrite(pin2, forward ? LOW : HIGH);  // Control motor direction
-    analogWrite(enablePin, forward ? speed : 0);  // Enable motor with speed or stop it
+    digitalWrite(pin1, forward ? HIGH : LOW);
+    digitalWrite(pin2, forward ? LOW : HIGH);
+    analogWrite(enablePin, speed);
 }
 
-// Function to stop both motors
-void stopMotors() {
-    digitalWrite(motor1Pin1, LOW);
-    digitalWrite(motor1Pin2, LOW);
-    digitalWrite(motor2Pin1, LOW);
-    digitalWrite(motor2Pin2, LOW);
-    analogWrite(enaPin, 0);  // Disable motor driver 1
-    analogWrite(enbPin, 0);  // Disable motor driver 2
+void updateMotorSpeed() {
+    if (abs(currentSpeed - targetSpeed) <= speedStep) {
+        currentSpeed = targetSpeed;
+    } else if (currentSpeed < targetSpeed) {
+        currentSpeed += speedStep;
+    } else {
+        currentSpeed -= speedStep;
+    }
+    
+    bool forward = currentSpeed >= 0;
+    int absSpeed = abs(currentSpeed);
+    
+    controlMotor(motor1Pin1, motor1Pin2, enaPin, forward, absSpeed);
+    controlMotor(motor2Pin1, motor2Pin2, enbPin, forward, absSpeed);
 }
 
-// Function to move the servo back and forth
-void moveServo() {
-    unsigned long currentTime = millis();
-    if (currentTime - lastServoMoveTime >= servoMoveInterval) {
-        currentServoAngle = (currentServoAngle == 90) ? 45 : 90;  // Alternate angle
-        myservo.write(currentServoAngle);
-        lastServoMoveTime = currentTime;
+void processLookaheadPoint(int x, int y) {
+    int servoAngle = constrain(map(x, 0, 640, 45, 135), 45, 135);
+    myservo.write(servoAngle);
+
+    if (y < stopThreshold) {
+        targetSpeed = 0;
+    } else {
+        targetSpeed = map(constrain(y, 0, 480), 0, 480, minSpeed, 255);
+    }
+    
+    Serial.print("Processed: x=");
+    Serial.print(x);
+    Serial.print(", y=");
+    Serial.println(y);
+}
+
+void processCommand(String command) {
+    command.trim();
+    
+    if (command == "stop") {
+        targetSpeed = 0;
+        Serial.println("Stopping");
+        return;
+    }
+    
+    int commaIndex = command.indexOf(',');
+    if (commaIndex > 0) {
+        String xStr = command.substring(0, commaIndex);
+        String yStr = command.substring(commaIndex + 1);
+        
+        int x = xStr.toInt();
+        int y = yStr.toInt();
+        
+        if (x >= 0 && x <= 640 && y >= 0 && y <= 480) {
+            processLookaheadPoint(x, y);
+        } else {
+            Serial.println("Invalid coordinates");
+        }
     }
 }
 
 void setup() {
-    // Initialize motor pins
+    Serial.begin(115200);
+    
     pinMode(motor1Pin1, OUTPUT);
     pinMode(motor1Pin2, OUTPUT);
     pinMode(motor2Pin1, OUTPUT);
     pinMode(motor2Pin2, OUTPUT);
     pinMode(enaPin, OUTPUT);
     pinMode(enbPin, OUTPUT);
-
-    // Initialize servo
+    
     myservo.attach(servoPin);
-    myservo.write(currentServoAngle);  // Set servo to initial position (default 90°)
-
-    // Start Serial communication
-    Serial.begin(115200);
-
-    // Stop motors initially (disabled by default)
-    stopMotors();
+    myservo.write(90);
 }
 
 void loop() {
-    // Check for serial input
     if (Serial.available()) {
         String command = Serial.readStringUntil('\n');
-        command.trim();
-
-        // Parse lookahead point
-        int commaIndex = command.indexOf(',');
-        if (commaIndex > 0) {
-            String xStr = command.substring(0, commaIndex);
-            String yStr = command.substring(commaIndex + 1);
-            int x = xStr.toInt();
-            int y = yStr.toInt();
-
-            // Debugging output
-            Serial.print("Lookahead Point Received: x=");
-            Serial.print(x);
-            Serial.print(", y=");
-            Serial.println(y);
-
-            // Map x-coordinate to servo angle
-            int servoAngle = map(x, 0, 640, 45, 135);  // Adjust based on frame width (0-640)
-            myservo.write(servoAngle);
-
-            // Map y-coordinate to motor speed
-            int speed = map(y, 0, 480, 100, 255);  // Adjust based on frame height (0-480)
-            controlMotor(motor1Pin1, motor1Pin2, enaPin, true, speed);
-            controlMotor(motor2Pin1, motor2Pin2, enbPin, true, speed);
-
-            shouldMove = true;
-        } else if (command == "stop") {
-            // Stop motors on 'stop' command
-            Serial.println("Motors stopped.");
-            stopMotors();
-            shouldMove = false;
-        }
+        processCommand(command);
+        updateMotorSpeed();
     }
-
-    // Move the servo at intervals (if required)
-//    moveServo();
-}
+    
+} 
