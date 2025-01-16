@@ -22,16 +22,18 @@ class Detection:
         self.zoom_factor = 0.5
 
         self.last_send_time = 0
-        self.last_sent_point = None 
+        self.last_sent_point = None
         self.smoothing_window = 5
-        self.lookahead_points_history = []  
+        self.lookahead_points_history = []
 
     def detect_lanes(self, frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        black_mask = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+        black_mask = cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2
+        )
 
         height, width = black_mask.shape
-        roi = np.array([[  
+        roi = np.array([[
             (0, height),
             (width, height),
             (width // 2 + 100, height // 2),
@@ -60,7 +62,6 @@ class Detection:
         return leftmost_line, rightmost_line, black_mask, edges
 
     def _is_valid_slope(self, line):
-
         x1, y1, x2, y2 = line[0]
         if x2 == x1:
             return False  # Avoid division by zero
@@ -68,7 +69,6 @@ class Detection:
         return 0.5 < abs(slope) < 2
 
     def _fit_polynomial(self, line):
-
         x1, y1, x2, y2 = line
         poly = np.polyfit([x1, x2], [y1, y2], 1)
         x_new = np.linspace(x1, x2, num=100, dtype=int)
@@ -94,6 +94,7 @@ class Detection:
         if point and not self.human_present:
             lookahead_str = f"{point[0]},{point[1]}"
             self.client.ws.send(lookahead_str)
+
     def smooth_lookahead_point(self, point):
         if len(self.lookahead_points_history) >= self.smoothing_window:
             self.lookahead_points_history.pop(0)
@@ -145,9 +146,8 @@ class Detection:
             self.client.ws.send("Road clear")
             self.human_present = False
 
-        # Skip further processing if a human is detected
         if self.human_present:
-            time.sleep(self.frame_delay)  # Maintain frame rate while pausing
+            time.sleep(self.frame_delay)
             return True
 
         leftmost_line, rightmost_line, _, _ = self.detect_lanes(frame)
@@ -157,9 +157,11 @@ class Detection:
         if lookahead_point:
             smoothed_point = self.smooth_lookahead_point(lookahead_point)
 
-            if self.last_sent_point is None or abs(smoothed_point[0] - self.last_sent_point[0]) > 10 or abs(smoothed_point[1] - self.last_sent_point[1]) > 10:
+            current_time = time.time()
+            if current_time - self.last_send_time >= 1:  # Send every 1 second
                 self.send_lookahead_point(smoothed_point)
-                self.last_sent_point = smoothed_point 
+                self.last_send_time = current_time
+                self.last_sent_point = smoothed_point
 
         if leftmost_line is not None:
             cv2.line(frame, (leftmost_line[0], leftmost_line[1]), (leftmost_line[2], leftmost_line[3]), (0, 255, 0), 2)
@@ -167,8 +169,6 @@ class Detection:
             cv2.line(frame, (rightmost_line[0], rightmost_line[1]), (rightmost_line[2], rightmost_line[3]), (255, 0, 0), 2)
         if lookahead_point:
             cv2.circle(frame, smoothed_point, 5, (0, 0, 255), -1)
-
-        cv2.imshow("Person Detection", frame)
 
         elapsed_time = time.time() - start_time
         remaining_time = self.frame_delay - elapsed_time
@@ -183,7 +183,6 @@ class Detection:
         self.cap.release()
         cv2.destroyAllWindows()
         print("Resources released and windows closed.")
-
 
 if __name__ == "__main__":
     detection = Detection()

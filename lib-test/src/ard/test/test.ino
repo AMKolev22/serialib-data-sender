@@ -64,20 +64,22 @@ void processCommand(String command) {
         Serial.println("Stopping");
         return;
     }
-    
-    int commaIndex = command.indexOf(',');
-    if (commaIndex > 0) {
-        String xStr = command.substring(0, commaIndex);
-        String yStr = command.substring(commaIndex + 1);
-        
-        int x = xStr.toInt();
-        int y = yStr.toInt();
-        
-        if (x >= 0 && x <= 640 && y >= 0 && y <= 480) {
-            processLookaheadPoint(x, y);
-        } else {
-            Serial.println("Invalid coordinates");
-        }
+    else{
+      Serial.println("Moving");
+      int commaIndex = command.indexOf(',');
+      if (commaIndex > 0) {
+          String xStr = command.substring(0, commaIndex);
+          String yStr = command.substring(commaIndex + 1);
+          
+          int x = xStr.toInt();
+          int y = yStr.toInt();
+          
+          if (x >= 0 && x <= 640 && y >= 0 && y <= 480) {
+              processLookaheadPoint(x, y);
+          } else {
+              Serial.println("Invalid coordinates");
+          }
+      }
     }
 }
 
